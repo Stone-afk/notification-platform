@@ -74,5 +74,5 @@ type ChannelTemplateRepository interface {
 	BatchUpdateTemplateProvidersAuditInfo(ctx context.Context, providers []domain.ChannelTemplateProvider) error
 
 	// GetPendingOrInReviewProviders 获取未审核或审核中的供应商关联
-	GetPendingOrInReviewProviders(ctx context.Context, offset, limit int, ctime int64) (providers []domain.ChannelTemplateProvider, total int64, err error)
+	GetPendingOrInReviewProviders(ctx context.Context, offset, limit int, utime int64) (providers []domain.ChannelTemplateProvider, total int64, err error)
 }

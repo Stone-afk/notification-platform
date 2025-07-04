@@ -2,6 +2,43 @@ package dao
 
 import "context"
 
+type NotificationDAO interface {
+	// Create 创建单条通知记录，但不创建对应的回调记录
+	// 可以考虑换个名字，因为它还会扣减额度，如 CreateAndDecrQuota
+	Create(ctx context.Context, data Notification) (Notification, error)
+	// CreateWithCallbackLog 创建单条通知记录，同时创建对应的回调记录
+	CreateWithCallbackLog(ctx context.Context, data Notification) (Notification, error)
+	// BatchCreate 批量创建通知记录，但不创建对应的回调记录
+	BatchCreate(ctx context.Context, dataList []Notification) ([]Notification, error)
+	// BatchCreateWithCallbackLog 批量创建通知记录，同时创建对应的回调记录
+	BatchCreateWithCallbackLog(ctx context.Context, datas []Notification) ([]Notification, error)
+
+	// GetByID 根据ID查询通知
+	GetByID(ctx context.Context, id uint64) (Notification, error)
+
+	BatchGetByIDs(ctx context.Context, ids []uint64) (map[uint64]Notification, error)
+
+	// GetByKey 根据业务ID和业务内唯一标识获取通知列表
+	GetByKey(ctx context.Context, bizID int64, key string) (Notification, error)
+
+	// GetByKeys 根据业务ID和业务内唯一标识获取通知列表
+	GetByKeys(ctx context.Context, bizID int64, keys ...string) ([]Notification, error)
+
+	// CASStatus 更新通知状态
+	CASStatus(ctx context.Context, notification Notification) error
+	UpdateStatus(ctx context.Context, notification Notification) error
+
+	// BatchUpdateStatusSucceededOrFailed 批量更新通知状态为成功或失败，使用乐观锁控制并发
+	// successNotifications: 更新为成功状态的通知列表，包含ID、Version和重试次数
+	// failedNotifications: 更新为失败状态的通知列表，包含ID、Version和重试次数
+	BatchUpdateStatusSucceededOrFailed(ctx context.Context, successNotifications, failedNotifications []Notification) error
+
+	FindReadyNotifications(ctx context.Context, offset, limit int) ([]Notification, error)
+	MarkSuccess(ctx context.Context, entity Notification) error
+	MarkFailed(ctx context.Context, entity Notification) error
+	MarkTimeoutSendingAsFailed(ctx context.Context, batchSize int) (int64, error)
+}
+
 type BusinessConfigDAO interface {
 	GetByIDs(ctx context.Context, ids []int64) (map[int64]BusinessConfig, error)
 	GetByID(ctx context.Context, id int64) (BusinessConfig, error)

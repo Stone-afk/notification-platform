@@ -2,6 +2,20 @@ package dao
 
 import "context"
 
+type BusinessConfigDAO interface {
+	GetByIDs(ctx context.Context, ids []int64) (map[int64]BusinessConfig, error)
+	GetByID(ctx context.Context, id int64) (BusinessConfig, error)
+	Delete(ctx context.Context, id int64) error
+	SaveConfig(ctx context.Context, config BusinessConfig) (BusinessConfig, error)
+	Find(ctx context.Context, offset int, limit int) ([]BusinessConfig, error)
+}
+
+type CallbackLogDAO interface {
+	Find(ctx context.Context, startTime, batchSize, startID int64) (logs []CallbackLog, nextStartID int64, err error)
+	FindByNotificationIDs(ctx context.Context, notificationIDs []uint64) ([]CallbackLog, error)
+	Update(ctx context.Context, logs []CallbackLog) error
+}
+
 type ProviderDAO interface {
 	// Create 创建供应商
 	Create(ctx context.Context, provider Provider) (Provider, error)

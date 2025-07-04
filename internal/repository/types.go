@@ -5,6 +5,22 @@ import (
 	"notification-platform/internal/domain"
 )
 
+// CallbackLogRepository 回调记录仓储接口
+type CallbackLogRepository interface {
+	Find(ctx context.Context, startTime, batchSize, startID int64) (logs []domain.CallbackLog, nextStartID int64, err error)
+	Update(ctx context.Context, logs []domain.CallbackLog) error
+	FindByNotificationIDs(ctx context.Context, notificationIDs []uint64) ([]domain.CallbackLog, error)
+}
+
+type BusinessConfigRepository interface {
+	LoadCache(ctx context.Context) error
+	GetByIDs(ctx context.Context, ids []int64) (map[int64]domain.BusinessConfig, error)
+	GetByID(ctx context.Context, id int64) (domain.BusinessConfig, error)
+	Delete(ctx context.Context, id int64) error
+	SaveConfig(ctx context.Context, config domain.BusinessConfig) error
+	Find(ctx context.Context, offset, limit int) ([]domain.BusinessConfig, error)
+}
+
 // ProviderRepository 供应商仓储接口
 type ProviderRepository interface {
 	// Create 创建供应商

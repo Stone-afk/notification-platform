@@ -8,6 +8,8 @@ require (
 	github.com/alibabacloud-go/tea v1.2.2
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ego-component/egorm v1.1.4
+	github.com/gotomicro/ego v1.0.3
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/stretchr/testify v1.10.0
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.0.1196
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.1183
@@ -25,10 +27,11 @@ require (
 	github.com/alibabacloud-go/tea-xml v1.1.3 // indirect
 	github.com/aliyun/credentials-go v1.4.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clbanning/mxj/v2 v2.5.5 // indirect
 	github.com/cloudflare/golz4 v0.0.0-20150217214814-ef862a3cdc58 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/felixge/fgprof v0.9.1 // indirect
 	github.com/go-logr/logr v1.2.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -37,7 +40,6 @@ require (
 	github.com/golang-sql/sqlexp v0.1.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/pprof v0.0.0-20200708004538-1a94d8640e99 // indirect
-	github.com/gotomicro/ego v1.0.3 // indirect
 	github.com/gotomicro/logrotate v0.0.0-20211108024517-45d1f9a03ff5 // indirect
 	github.com/hashicorp/go-version v1.4.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
@@ -61,6 +63,7 @@ require (
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.32.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
+	github.com/redis/go-redis/v9 v9.11.0 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/tjfoc/gmsm v1.4.1 // indirect
 	go.opentelemetry.io/otel v1.4.1 // indirect

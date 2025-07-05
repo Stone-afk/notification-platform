@@ -5,6 +5,47 @@ import (
 	"notification-platform/internal/domain"
 )
 
+type TxNotificationRepository interface {
+	Create(ctx context.Context, notification domain.TxNotification) (uint64, error)
+	FindCheckBack(ctx context.Context, offset, limit int) ([]domain.TxNotification, error)
+	UpdateStatus(ctx context.Context, bizID int64, key string, status domain.TxNotificationStatus, notificationStatus domain.SendStatus) error
+	UpdateCheckStatus(ctx context.Context, txNotifications []domain.TxNotification, notificationStatus domain.SendStatus) error
+}
+
+// NotificationRepository 通知仓储接口
+type NotificationRepository interface {
+	// Create 创建单条通知记录，但不创建对应的回调记录
+	Create(ctx context.Context, notification domain.Notification) (domain.Notification, error)
+	// CreateWithCallbackLog 创建单条通知记录，同时创建对应的回调记录
+	CreateWithCallbackLog(ctx context.Context, notification domain.Notification) (domain.Notification, error)
+	// BatchCreate 批量创建通知记录，但不创建对应的回调记录
+	BatchCreate(ctx context.Context, notifications []domain.Notification) ([]domain.Notification, error)
+	// BatchCreateWithCallbackLog 批量创建通知记录，同时创建对应的回调记录
+	BatchCreateWithCallbackLog(ctx context.Context, notifications []domain.Notification) ([]domain.Notification, error)
+
+	// GetByID 根据ID获取通知
+	GetByID(ctx context.Context, id uint64) (domain.Notification, error)
+	// BatchGetByIDs 根据ID列表获取通知列表
+	BatchGetByIDs(ctx context.Context, ids []uint64) (map[uint64]domain.Notification, error)
+
+	GetByKey(ctx context.Context, bizID int64, key string) (domain.Notification, error)
+	// GetByKeys 根据业务ID和业务内唯一标识获取通知列表
+	GetByKeys(ctx context.Context, bizID int64, keys ...string) ([]domain.Notification, error)
+
+	// CASStatus 更新通知状态
+	CASStatus(ctx context.Context, notification domain.Notification) error
+	UpdateStatus(ctx context.Context, notification domain.Notification) error
+
+	// BatchUpdateStatusSucceededOrFailed 批量更新通知状态为成功或失败
+	BatchUpdateStatusSucceededOrFailed(ctx context.Context, succeededNotifications, failedNotifications []domain.Notification) error
+
+	FindReadyNotifications(ctx context.Context, offset int, limit int) ([]domain.Notification, error)
+	MarkSuccess(ctx context.Context, entity domain.Notification) error
+	MarkFailed(ctx context.Context, notification domain.Notification) error
+	// MarkTimeoutSendingAsFailed 将超时的 SENDING 状态的通知都标记为失败
+	MarkTimeoutSendingAsFailed(ctx context.Context, batchSize int) (int64, error)
+}
+
 // CallbackLogRepository 回调记录仓储接口
 type CallbackLogRepository interface {
 	Find(ctx context.Context, startTime, batchSize, startID int64) (logs []domain.CallbackLog, nextStartID int64, err error)

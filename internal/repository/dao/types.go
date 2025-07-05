@@ -1,6 +1,30 @@
 package dao
 
-import "context"
+import (
+	"context"
+	"notification-platform/internal/domain"
+)
+
+type TxNotificationDAO interface {
+	// FindCheckBack 查找需要回查的事务通知，筛选条件是status为PREPARE，并且下一次回查时间小于当前时间
+	FindCheckBack(ctx context.Context, offset, limit int) ([]TxNotification, error)
+	// CASStatus 变更状态 用于用户提交/取消
+	// CASStatus(ctx context.Context, txID int64, status string) error
+
+	// UpdateCheckStatus 更新回查状态用于回查任务，回查次数+1 更新下一次的回查时间戳，通知状态，utime 要求都是同一状态的
+	UpdateCheckStatus(ctx context.Context, txNotifications []TxNotification, status domain.SendStatus) error
+	// First 通过事务id查找对应的事务
+	First(ctx context.Context, txID int64) (TxNotification, error)
+	// BatchGetTxNotification 批量获取事务消息
+	BatchGetTxNotification(ctx context.Context, txIDs []int64) (map[int64]TxNotification, error)
+
+	GetByBizIDKey(ctx context.Context, bizID int64, key string) (TxNotification, error)
+	UpdateNotificationID(ctx context.Context, bizID int64, key string, notificationID uint64) error
+
+	Prepare(ctx context.Context, txNotification TxNotification, notification Notification) (uint64, error)
+	// UpdateStatus 提供给用户使用
+	UpdateStatus(ctx context.Context, bizID int64, key string, status domain.TxNotificationStatus, notificationStatus domain.SendStatus) error
+}
 
 type NotificationDAO interface {
 	// Create 创建单条通知记录，但不创建对应的回调记录

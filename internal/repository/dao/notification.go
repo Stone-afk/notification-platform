@@ -1,9 +1,117 @@
 package dao
 
 import (
+	"context"
 	"fmt"
+	"github.com/ego-component/egorm"
 	"strings"
 )
+
+type notificationDAO struct {
+	db *egorm.Component
+
+	coreDB     *egorm.Component
+	noneCoreDB *egorm.Component
+}
+
+func (dao *notificationDAO) Create(ctx context.Context, data Notification) (Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) CreateWithCallbackLog(ctx context.Context, data Notification) (Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) BatchCreate(ctx context.Context, dataList []Notification) ([]Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) BatchCreateWithCallbackLog(ctx context.Context, datas []Notification) ([]Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) GetByID(ctx context.Context, id uint64) (Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) BatchGetByIDs(ctx context.Context, ids []uint64) (map[uint64]Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) GetByKey(ctx context.Context, bizID int64, key string) (Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) GetByKeys(ctx context.Context, bizID int64, keys ...string) ([]Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) CASStatus(ctx context.Context, notification Notification) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) UpdateStatus(ctx context.Context, notification Notification) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) BatchUpdateStatusSucceededOrFailed(ctx context.Context, successNotifications, failedNotifications []Notification) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) FindReadyNotifications(ctx context.Context, offset, limit int) ([]Notification, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) MarkSuccess(ctx context.Context, entity Notification) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) MarkFailed(ctx context.Context, entity Notification) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (dao *notificationDAO) MarkTimeoutSendingAsFailed(ctx context.Context, batchSize int) (int64, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+//nolint:unused // 这是我的演示代码
+func (dao *notificationDAO) selectDB(ctx context.Context) *egorm.Component {
+	if ctx.Value("Priority") == "high" {
+		return dao.coreDB
+	}
+	return dao.noneCoreDB
+}
+
+func NewNotificationDAOV1(coreDB *egorm.Component,
+	noneCoreDB *egorm.Component,
+) NotificationDAO {
+	return &notificationDAO{
+		coreDB:     coreDB,
+		noneCoreDB: noneCoreDB,
+	}
+}
+
+// NewNotificationDAO 创建通知DAO实例
+func NewNotificationDAO(db *egorm.Component) NotificationDAO {
+	return &notificationDAO{
+		db: db,
+	}
+}
 
 // Notification 通知记录表
 type Notification struct {
@@ -21,6 +129,11 @@ type Notification struct {
 	Version           int    `gorm:"type:INT;NOT NULL;DEFAULT:1;comment:'版本号，用于CAS操作'"`
 	Ctime             int64
 	Utime             int64
+}
+
+// TableName specifies the table name for the TxNotification model
+func (t *Notification) TableName() string {
+	return "notification"
 }
 
 // CheckErrIsIDDuplicate 判断是否是主键冲突

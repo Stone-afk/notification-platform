@@ -41,3 +41,9 @@ type Notification struct {
 	Version            int                `json:"version"`        // 版本号
 	SendStrategyConfig SendStrategyConfig `json:"sendStrategyConfig"`
 }
+
+func (n *Notification) SetSendTime() {
+	stime, etime := n.SendStrategyConfig.SendTimeWindow()
+	n.ScheduledSTime = stime
+	n.ScheduledETime = etime
+}

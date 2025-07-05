@@ -23,6 +23,32 @@ type SendStrategyConfig struct {
 	DeadlineTime  time.Time        `json:"deadlineTime"`  // 截止日期策略使用，截止日期
 }
 
+// SendTimeWindow 计算最早发送时间和最晚发送时间
+func (e SendStrategyConfig) SendTimeWindow() (stime, etime time.Time) {
+	switch e.Type {
+	case SendStrategyImmediate:
+		now := time.Now()
+		const defaultEndDuration = 30 * time.Minute
+		return now, now.Add(defaultEndDuration)
+	case SendStrategyDelayed:
+		now := time.Now()
+		return now, now.Add(e.Delay)
+	case SendStrategyDeadline:
+		now := time.Now()
+		return now, e.DeadlineTime
+	case SendStrategyTimeWindow:
+		return e.StartTime, e.EndTime
+	case SendStrategyScheduled:
+		// 无法精确控制，所以允许一些误差
+		const scheduledTimeTolerance = 3 * time.Second
+		return e.ScheduledTime.Add(-scheduledTimeTolerance), e.ScheduledTime
+	default:
+		// 假定一定检测过了，所以这里随便返回一个就可以
+		now := time.Now()
+		return now, now
+	}
+}
+
 // SendResponse 发送响应
 type SendResponse struct {
 	NotificationID uint64     // 通知ID

@@ -1,6 +1,11 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"fmt"
+	"notification-platform/internal/errs"
+	"time"
+)
 
 // SendStatus 通知状态
 type SendStatus string
@@ -50,4 +55,71 @@ func (n *Notification) SetSendTime() {
 
 func (n *Notification) IsImmediate() bool {
 	return n.SendStrategyConfig.Type == SendStrategyImmediate
+}
+
+// ReplaceAsyncImmediate 如果是是立刻发送，就修改为默认的策略
+func (n *Notification) ReplaceAsyncImmediate() {
+	if n.IsImmediate() {
+		n.SendStrategyConfig.DeadlineTime = time.Now().Add(time.Minute)
+		n.SendStrategyConfig.Type = SendStrategyDeadline
+	}
+}
+
+func (n *Notification) Validate() error {
+	if n.BizID <= 0 {
+		return fmt.Errorf("%w: BizID = %d", errs.ErrInvalidParameter, n.BizID)
+	}
+
+	if n.Key == "" {
+		return fmt.Errorf("%w: Key = %q", errs.ErrInvalidParameter, n.Key)
+	}
+
+	if len(n.Receivers) == 0 {
+		return fmt.Errorf("%w: Receivers= %v", errs.ErrInvalidParameter, n.Receivers)
+	}
+
+	if !n.Channel.IsValid() {
+		return fmt.Errorf("%w: Channel = %q", errs.ErrInvalidParameter, n.Channel)
+	}
+
+	if n.Template.ID <= 0 {
+		return fmt.Errorf("%w: Template.ID = %d", errs.ErrInvalidParameter, n.Template.ID)
+	}
+
+	if n.Template.VersionID <= 0 {
+		return fmt.Errorf("%w: Template.VersionID = %d", errs.ErrInvalidParameter, n.Template.VersionID)
+	}
+
+	if len(n.Template.Params) == 0 {
+		return fmt.Errorf("%w: Template.Params = %q", errs.ErrInvalidParameter, n.Template.Params)
+	}
+
+	if err := n.SendStrategyConfig.Validate(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (n *Notification) IsValidBizID() error {
+	if n.BizID <= 0 {
+		return fmt.Errorf("%w: BizID = %d", errs.ErrInvalidParameter, n.BizID)
+	}
+	return nil
+}
+
+func (n *Notification) MarshalReceivers() (string, error) {
+	return n.marshal(n.Receivers)
+}
+
+func (n *Notification) MarshalTemplateParams() (string, error) {
+	return n.marshal(n.Template.Params)
+}
+
+func (n *Notification) marshal(v any) (string, error) {
+	jsonBytes, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	return string(jsonBytes), nil
 }

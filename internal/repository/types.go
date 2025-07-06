@@ -11,7 +11,7 @@ type QuotaRepository interface {
 }
 
 type TxNotificationRepository interface {
-	Create(ctx context.Context, notification domain.TxNotification) (uint64, error)
+	Create(ctx context.Context, txn domain.TxNotification) (uint64, error)
 	FindCheckBack(ctx context.Context, offset, limit int) ([]domain.TxNotification, error)
 	UpdateStatus(ctx context.Context, bizID int64, key string, status domain.TxNotificationStatus, notificationStatus domain.SendStatus) error
 	UpdateCheckStatus(ctx context.Context, txNotifications []domain.TxNotification, notificationStatus domain.SendStatus) error

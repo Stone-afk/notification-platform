@@ -5,10 +5,10 @@ import (
 	"notification-platform/internal/domain"
 )
 
-// SendService 负责处理发送
+// SendNotificationService 负责处理发送
 //
 //go:generate mockgen -source=./send_notification.go -destination=./mocks/send_notification.mock.go -package=notificationmocks -typed SendService
-type SendService interface {
+type SendNotificationService interface {
 	// SendNotification 同步单条发送
 	SendNotification(ctx context.Context, n domain.Notification) (domain.SendResponse, error)
 	// SendNotificationAsync 异步单条发送
@@ -20,7 +20,7 @@ type SendService interface {
 }
 
 //go:generate mockgen -source=./notification.go -destination=./mocks/notification.mock.go -package=notificationmocks -typed Service
-type Service interface {
+type NotificationService interface {
 	// FindReadyNotifications 准备好调度发送的通知
 	FindReadyNotifications(ctx context.Context, offset, limit int) ([]domain.Notification, error)
 	// GetByKeys 根据业务ID和业务内唯一标识获取通知列表

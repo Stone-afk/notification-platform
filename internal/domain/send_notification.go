@@ -1,6 +1,10 @@
 package domain
 
-import "time"
+import (
+	"fmt"
+	"notification-platform/internal/errs"
+	"time"
+)
 
 // SendStrategyType 发送策略类型
 type SendStrategyType string
@@ -47,6 +51,31 @@ func (e SendStrategyConfig) SendTimeWindow() (stime, etime time.Time) {
 		now := time.Now()
 		return now, now
 	}
+}
+
+func (e SendStrategyConfig) Validate() error {
+	// 校验策略相关字段
+	switch e.Type {
+	case SendStrategyImmediate:
+		return nil
+	case SendStrategyDelayed:
+		if e.Delay <= 0 {
+			return fmt.Errorf("%w: 延迟发送策略需要指定正数的延迟秒数", errs.ErrInvalidParameter)
+		}
+	case SendStrategyScheduled:
+		if e.ScheduledTime.IsZero() || e.ScheduledTime.Before(time.Now()) {
+			return fmt.Errorf("%w: 定时发送策略需要指定未来的发送时间", errs.ErrInvalidParameter)
+		}
+	case SendStrategyTimeWindow:
+		if e.StartTime.IsZero() || e.StartTime.After(e.EndTime) {
+			return fmt.Errorf("%w: 时间窗口发送策略需要指定有效的开始和结束时间", errs.ErrInvalidParameter)
+		}
+	case SendStrategyDeadline:
+		if e.DeadlineTime.IsZero() || e.DeadlineTime.Before(time.Now()) {
+			return fmt.Errorf("%w: 截止日期发送策略需要指定未来的发送时间", errs.ErrInvalidParameter)
+		}
+	}
+	return nil
 }
 
 // SendResponse 发送响应

@@ -32,7 +32,7 @@ func (s *notificationService) GetByKeys(ctx context.Context, bizID int64, keys .
 }
 
 // NewNotificationService 创建通知服务实例
-func NewNotificationService(repo repository.NotificationRepository) Service {
+func NewNotificationService(repo repository.NotificationRepository) NotificationService {
 	return &notificationService{
 		repo: repo,
 	}

@@ -5,6 +5,20 @@ import (
 	"notification-platform/internal/domain"
 )
 
+// SendService 负责处理发送
+//
+//go:generate mockgen -source=./send_notification.go -destination=./mocks/send_notification.mock.go -package=notificationmocks -typed SendService
+type SendService interface {
+	// SendNotification 同步单条发送
+	SendNotification(ctx context.Context, n domain.Notification) (domain.SendResponse, error)
+	// SendNotificationAsync 异步单条发送
+	SendNotificationAsync(ctx context.Context, n domain.Notification) (domain.SendResponse, error)
+	// BatchSendNotifications 同步批量发送
+	BatchSendNotifications(ctx context.Context, ns ...domain.Notification) (domain.BatchSendResponse, error)
+	// BatchSendNotificationsAsync 异步批量发送
+	BatchSendNotificationsAsync(ctx context.Context, ns ...domain.Notification) (domain.BatchSendAsyncResponse, error)
+}
+
 //go:generate mockgen -source=./notification.go -destination=./mocks/notification.mock.go -package=notificationmocks -typed Service
 type Service interface {
 	// FindReadyNotifications 准备好调度发送的通知

@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package config.v1;
+
+option go_package = "notification-platform/api/proto/config/v1;configv1";
+
+// RetryConfig represents retry policy configuration
+message RetryConfig {
+  int32 max_attempts = 1;
+  int32 initial_backoff_ms = 2;
+  int32 max_backoff_ms = 3;
+  double backoff_multiplier = 4;
+}
+
+// ChannelItem represents a notification channel with priority settings
+message ChannelItem {
+  string channel = 1;
+  int32 priority = 2;
+  bool enabled = 3;
+}
+
+// ChannelConfig represents channel configuration
+message ChannelConfig {
+  repeated ChannelItem channels = 1;
+  RetryConfig retry_policy = 2;
+}
+
+// TxnConfig represents transaction configuration
+message TxnConfig {
+  string service_name = 1;
+  int32 initial_delay = 2;
+  RetryConfig retry_policy = 3;
+}
+
+// MonthlyConfig represents monthly quotas for different channels
+message MonthlyConfig {
+  int32 sms = 1;
+  int32 email = 2;
+}
+
+// QuotaConfig represents quota configuration
+message QuotaConfig {
+  MonthlyConfig monthly = 1;
+}
+
+// CallbackConfig represents callback configuration
+message CallbackConfig {
+  string service_name = 1;
+  RetryConfig retry_policy = 2;
+}
+
+// BusinessConfig represents the configuration for a business entity
+message BusinessConfig {
+  int64 owner_id = 1;
+  string owner_type = 2;
+  ChannelConfig channel_config = 3;
+  TxnConfig txn_config = 4;
+  int32 rate_limit = 5;
+  QuotaConfig quota = 6;
+  CallbackConfig callback_config = 7;
+}
+
+// GetByIDsRequest represents the request for GetByIDs method
+message GetByIDsRequest {
+  repeated int64 ids = 1;
+}
+
+// GetByIDsResponse represents the response for GetByIDs method
+message GetByIDsResponse {
+  map<int64, BusinessConfig> configs = 1;
+}
+
+// GetByIDRequest represents the request for GetByID method
+message GetByIDRequest {
+  int64 id = 1;
+}
+
+// GetByIDResponse represents the response for GetByID method
+message GetByIDResponse {
+  BusinessConfig config = 1;
+}
+
+// DeleteRequest represents the request for Delete method
+message DeleteRequest {
+  int64 id = 1;
+}
+
+// DeleteResponse represents the response for Delete method
+message DeleteResponse {
+  bool success = 1;
+}
+
+// SaveConfigRequest represents the request for SaveConfig method
+message SaveConfigRequest {
+  BusinessConfig config = 1;
+}
+
+// SaveConfigResponse represents the response for SaveConfig method
+message SaveConfigResponse {
+  bool success = 1;
+}
+
+// BusinessConfigService provides methods to manage business configurations
+service BusinessConfigService {
+  // GetByIDs retrieves multiple business configurations by their IDs
+  rpc GetByIDs(GetByIDsRequest) returns (GetByIDsResponse) {}
+
+  // GetByID retrieves a single business configuration by its ID
+  rpc GetByID(GetByIDRequest) returns (GetByIDResponse) {}
+
+  // Delete removes a business configuration by its ID
+  rpc Delete(DeleteRequest) returns (DeleteResponse) {}
+
+  // SaveConfig saves non-zero fields of a business configuration
+  rpc SaveConfig(SaveConfigRequest) returns (SaveConfigResponse) {}
+}

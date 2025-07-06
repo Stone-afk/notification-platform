@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package client.v1;
+
+// 引入Notification定义
+
+option go_package = "notification-platform/api/gen/client/v1;clientv1";
+service TransactionCheckService {
+  // 通知平台调用业务方的接口
+  rpc Check(TransactionCheckServiceCheckRequest) returns (TransactionCheckServiceCheckResponse) {}
+}
+
+// 回查请求（通知平台 -> 业务方）
+message TransactionCheckServiceCheckRequest {
+  string key = 1; // 唯一标识
+}
+
+// 回调响应（业务方 -> 通知平台）
+message TransactionCheckServiceCheckResponse {
+  enum ResponseStatus {
+    UNKNOWN = 0;
+    COMMITTED = 1;
+    CANCEL = 2;
+  }
+  ResponseStatus status = 1;
+}

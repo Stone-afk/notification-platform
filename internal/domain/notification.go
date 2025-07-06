@@ -47,3 +47,7 @@ func (n *Notification) SetSendTime() {
 	n.ScheduledSTime = stime
 	n.ScheduledETime = etime
 }
+
+func (n *Notification) IsImmediate() bool {
+	return n.SendStrategyConfig.Type == SendStrategyImmediate
+}

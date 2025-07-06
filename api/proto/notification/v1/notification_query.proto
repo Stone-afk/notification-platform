@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package notification.v1;
+
+import "notification/v1/notification.proto";
+
+option go_package = "notification-platform/api/gen/v1;notificationpb";
+
+// 查询服务
+service NotificationQueryService {
+  // 单条查询
+  rpc QueryNotification(QueryNotificationRequest) returns (QueryNotificationResponse);
+
+  // 批量查询
+  rpc BatchQueryNotifications(BatchQueryNotificationsRequest) returns (BatchQueryNotificationsResponse);
+}
+
+// 单条查询请求
+message QueryNotificationRequest {
+  // 业务方某个业务内部的唯一标识
+  string key = 1;
+}
+
+// 单条查询响应
+message QueryNotificationResponse {
+  SendNotificationResponse result = 1;
+}
+
+// 批量查询请求
+message BatchQueryNotificationsRequest {
+  // 业务方某个业务内部的唯一标识
+  repeated string keys = 1;
+}
+
+// 批量查询响应
+message BatchQueryNotificationsResponse {
+  repeated SendNotificationResponse results = 1;
+}

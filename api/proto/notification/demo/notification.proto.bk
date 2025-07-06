@@ -1,0 +1,505 @@
+syntax = "proto3";
+
+package notification.demo;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "notification-platform/api/gen/demo;notidemo";
+
+message AuthHeader {
+  string business_id = 1; // 业务方唯一标识
+  string api_key = 2; // 加密API密钥
+}
+
+service NotificationService {
+  // 同步单条发送
+  rpc SendNotification(SendRequest) returns (SendResponse);
+
+  // 批量发送（最多100条）
+  rpc BatchSendNotifications(BatchSendRequest) returns (BatchSendResponse);
+
+  // 异步发送（返回任务ID）
+  rpc AsyncSendNotification(AsyncSendRequest) returns (AsyncSendResponse);
+
+  rpc AsyncBatchSendNotifications(AsyncBatchSendRequest) returns (AsyncBatchSendResponse);
+}
+
+message AsyncSendResponse {
+  int64 notification_id = 1;
+  SendStatus status = 2;
+  ErrorCode error_code = 3;
+  string error_message = 4;
+}
+
+message AsyncSendRequest {
+  Notification notification = 1;
+}
+
+// 请求参数
+message SendRequest {
+  //  AuthHeader auth = 1;
+  Notification notification = 1;
+  // 标记位
+  bool async = 2;
+  //  RetryStrategy retry_strategy = 3; // 可选
+}
+
+message Notification {
+  string template_id = 1; // 模板ID
+  ChannelType channel = 2; // 渠道类型枚举
+  string receiver = 3;
+  // 其实是 uids
+  //  repeated int64 uids = 3;
+  map<string, string> params = 4; // 模板参数
+  //  Priority priority = 5;     // 优先级枚举
+  string key = 5;
+  oneof schedule {
+    ImmediateSchedule immediate = 10;
+    DelayedSchedule delay = 11;
+    TimeWindowSchedule window = 12;
+    FixedTimeSchedule fixed = 13;
+  }
+}
+
+// 调度策略类型
+message ImmediateSchedule {} // 立即发送
+message DelayedSchedule {
+  int64 delay_seconds = 1; // 延迟秒数
+}
+message TimeWindowSchedule {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+}
+message FixedTimeSchedule {
+  google.protobuf.Timestamp exact_time = 1;
+}
+
+service TransactionService {
+  rpc PrepareNotification(PrepareRequest) returns (PrepareResponse);
+  rpc CommitNotification(CommitRequest) returns (CommitResponse);
+  rpc CancelNotification(CancelRequest) returns (CancelResponse);
+}
+
+message PrepareRequest {
+  //  AuthHeader auth = 1;
+  Notification notification = 1;
+  //  string transaction_id = 3; // 业务方提供的事务ID
+}
+
+message CommitRequest {
+  //  AuthHeader auth = 1;
+  //  string prepare_id = 2; // 准备阶段返回的ID
+  string key = 1;
+}
+
+message CancelRequest {
+  string key = 1;
+}
+
+message CommitResponse {
+  bool success = 1;
+  // 做多加点 error 之类的字段;
+  // 核心元数据
+  //  string commit_id = 1;  // 提交操作唯一标识（ULID格式）
+  //  string prepare_id = 2; // 关联的准备记录ID
+  //  google.protobuf.Timestamp commit_time = 3; // 提交时间
+
+  // 处理结果
+  //  enum CommitStatus {
+  //    COMMIT_SUCCESS = 0;      // 成功触发发送
+  //    COMMIT_PARTIAL = 1;      // 部分接收者已失效（如号码过期）
+  //    COMMIT_FAILED = 2;       // 完全失败
+  //  }
+  //  CommitStatus status = 4;
+  //
+  //  // 实际消耗资源
+  //  message ActualCost {
+  //    string currency = 1;
+  //    double total_cost = 2;   // 最终消耗金额
+  //    int32 consumed_count = 3; // 实际发送条数
+  //    map<string, int32> channel_breakdown = 4; // 按渠道统计量
+  //  }
+  //  ActualCost actual_cost = 5;
+  //
+  //  // 错误详情（status≠COMMIT_SUCCESS时存在）
+  //  repeated SendResponse.ErrorInfo errors = 6;
+  //
+  //  // 发送任务追踪
+  //  message TaskReference {
+  //    string notification_id = 1;  // 单通知场景使用
+  //    string batch_task_id = 2;    // 批量场景使用
+  //  }
+  //  TaskReference task_ref = 7;
+}
+
+message PrepareResponse {
+  int64 notification_id = 1;
+  // 事务元数据
+  //  string prepare_id = 1;  // 平台生成的准备记录ID（ULID格式）
+  //  google.protobuf.Timestamp expire_time = 2;  // 准备记录有效期（默认30分钟）
+
+  // 验证结果
+  //  enum ValidationStatus {
+  //    VALIDATION_PASSED = 0;    // 参数校验通过
+  //    VALIDATION_WARN = 1;      // 参数警告（可继续提交）
+  //    VALIDATION_FAILED = 2;    // 参数校验失败（需修正后重试）
+  //  }
+  //  ValidationStatus validation_status = 3;
+
+  // 详细验证信息（当status≠VALIDATION_PASSED时存在）
+  //  repeated SendResponse.ErrorInfo validation_errors = 4;
+
+  // 成本预占信息
+  //  message CostEstimate {
+  //    string currency = 1;
+  //    double min_cost = 2;  // 最低可能成本（全部成功）
+  //    double max_cost = 3;  // 最高可能成本（含重试）
+  //    int32 receiver_count = 4;  // 有效接收者数量
+  //  }
+  //  CostEstimate cost_estimate = 5;
+
+  // 幂等性处理结果
+  //  enum IdempotencyResult {
+  //    NEW_PREPARATION = 0;      // 新建准备记录
+  //    REUSE_PREPARATION = 1;    // 复用已有记录
+  //  }
+  //  IdempotencyResult idempotency_status = 6;
+}
+
+message CancelResponse {
+  // 核心元数据
+  string cancel_id = 1; // 取消操作唯一标识（ULID格式）
+  string prepare_id = 2; // 关联的准备记录ID
+  google.protobuf.Timestamp cancel_time = 3;
+
+  // 处理结果
+  enum CancelResult {
+    CANCELLED = 0; // 成功取消（未产生费用）
+    ALREADY_COMMITTED = 1; // 已提交无法取消
+    RESOURCE_RELEASED = 2; // 部分预占资源已释放
+  }
+  CancelResult result = 4;
+
+  // 费用回退明细
+  message CostRollback {
+    double released_credit = 1; // 释放的预占额度
+    string currency = 2;
+  }
+  CostRollback rollback = 5;
+
+  // 错误详情（如取消失败原因）
+  repeated SendResponse.ErrorInfo errors = 6;
+}
+
+service QueryService {
+  rpc GetNotificationStatus(GetRequest) returns (GetResponse);
+  rpc BatchQueryStatuses(BatchGetRequest) returns (BatchGetResponse);
+}
+
+message GetRequest {
+  string key = 1; // 业务方自定义键
+}
+
+message BatchGetRequest {
+  repeated string keys = 1; // 业务方自定义键
+}
+
+message BatchGetResponse {
+  repeated Notification notifications = 1;
+}
+
+message GetResponse {
+  Notification notification = 1;
+}
+
+message StatusRequest {
+  oneof identifier {
+    string notification_id = 1;
+    string business_key = 2; // 业务方自定义键
+  }
+}
+
+message StatusResponse {
+  enum Status {
+    PENDING = 0;
+    SENT = 1;
+    FAILED = 2;
+    RETRYING = 3;
+  }
+  Status current_status = 1;
+  int32 retry_count = 2;
+  google.protobuf.Timestamp last_attempt = 3;
+}
+
+message RetryStrategy {
+  oneof strategy {
+    ImmediateRetry immediate = 1;
+    FixedIntervalRetry fixed = 2;
+    ExponentialBackoffRetry exponential = 3;
+  }
+}
+
+message ImmediateRetry {
+  int32 max_attempts = 1; // 最大重试次数
+}
+
+message FixedIntervalRetry {
+  int32 max_attempts = 1;
+  int32 interval_seconds = 2;
+}
+
+message ExponentialBackoffRetry {
+  int32 max_attempts = 1;
+  int32 initial_interval = 2;
+  float multiplier = 3;
+  int32 max_interval = 4;
+}
+
+enum ChannelType {
+  SMS = 0;
+  EMAIL = 1;
+  IN_APP = 2;
+  WECHAT_OFFICIAL = 3;
+  ENTERPRISE_IM = 4;
+}
+
+enum Priority {
+  P0 = 0; // 最高实时优先级
+  P1 = 1; // 高优先级队列
+  P2 = 2; // 普通队列
+}
+
+// 业务方需实现的回调服务
+service CallbackService {
+  rpc CheckTransactionStatus(CheckRequest) returns (CheckResponse);
+}
+
+message CheckRequest {
+  //  string prepare_id = 1;
+  string key = 1;
+}
+
+message CheckResponseV1 {
+  bool success = 1;
+  // 返回 FAILED or SUCCESS
+}
+
+message CheckResponse {
+  enum TxStatus {
+    UNKNOWN = 0;
+    COMMITTED = 1;
+    CANCELLED = 2;
+  }
+  TxStatus status = 1;
+}
+
+enum SendStatus {
+  UNKNOWN = 0;
+  PENDING = 1;
+  SENT = 2;
+  FAILED = 3;
+}
+
+enum ErrorCode {
+  ErrorCode_UNKNOWN = 0;
+  INVALID_PARAMETER = 1;
+}
+
+message SendResponse {
+  // 核心元数据
+  int64 notification_id = 1; // 平台生成的唯一通知ID（ULID格式）
+  SendStatus status = 2;
+  ErrorCode error_code = 3;
+  string error_message = 4;
+  //  google.protobuf.Timestamp platform_received_time = 2; // 平台接收时间
+
+  // 处理结果
+  //  enum ProcessingResult {
+  //    SUCCESS = 0;          // 已成功提交到服务商
+  //    VALIDATION_FAILED = 1;// 参数校验失败（业务方错误）
+  //    THROTTLED = 2;        // 流控拒绝
+  //    PARTIAL_SUCCESS = 3;  // 批量发送时部分成功
+  //  }
+  //  ProcessingResult result = 3;
+
+  // 通道级详细信息（当且仅当result=SUCCESS时填充）
+  //  message ChannelDetail {
+  //    string vendor_tx_id = 1;     // 服务商返回的事务ID（如短信厂商ID）
+  //    string vendor_response = 2;  // 原始响应报文（JSON格式）
+  //    int32 vendor_http_status = 3;// 服务商接口HTTP状态码
+  //  }
+  //  repeated ChannelDetail channel_details = 4; // 多接收者时按顺序对应
+
+  // 错误详情（result≠SUCCESS时存在）
+  message ErrorInfo {
+    string code = 1; // 标准错误码（如：INVALID_RECEIVER_FORMAT）
+    string message = 2;
+    //    string field = 3; // 引发错误的字段路径（如：notification.params.code）
+
+    // 错误严重等级
+    //    enum Severity {
+    //      BUSINESS = 0;    // 业务方需修改请求
+    //      PLATFORM = 1;    // 平台内部错误
+    //      VENDOR = 2;      // 服务商故障
+    //    }
+    //    Severity severity = 4;
+  }
+  // 偏复杂的设计
+  //  repeated ErrorInfo errors = 5;
+
+  // 成本预扣信息
+  //  message CostEstimate {
+  //    string currency = 1;       // 货币类型（如CNY/USD）
+  //    double unit_cost = 2;      // 单条成本
+  //    int32 consumed_count = 3;  // 实际消耗条数（如短信拆分条数）
+  //  }
+  //  CostEstimate cost = 6;       // 仅当result=SUCCESS时存在
+}
+
+message BatchSendRequest {
+  // 基础鉴权信息
+  //  AuthHeader auth = 1;
+
+  // 批量条目（最大100条）
+  //  repeated Notification notification = 2 [(validate.rules).repeated = {max_items: 100}];
+  repeated Notification notification = 1;
+
+  // 批量级控制参数
+  //  message BatchControl {
+  //    bool allow_partial_success = 1;  // 是否允许部分成功（默认false）
+  //    string idempotency_key = 2;      // 批量级幂等键（UUID格式）
+  //    bool enable_cost_preview = 3;    // 是否返回预计算成本
+  //  }
+  //  BatchControl control = 3;
+}
+
+message BatchItem {
+  //  string item_id = 1;        // 业务方提供的条目ID（用于结果匹配）
+  Notification notification = 2;
+  //  RetryStrategy retry_strategy = 3;  // 条目级重试策略（覆盖全局配置）
+}
+
+message BatchSendResponse {
+  // 批量元数据
+  //  string batch_id = 1;  // 平台生成的批量任务ID（ULID格式）
+  //  google.protobuf.Timestamp platform_received_time = 2;
+
+  // 全局处理状态
+  //  enum BatchStatus {
+  //    FULL_SUCCESS = 0;
+  //    PARTIAL_SUCCESS = 1;
+  //    VALIDATION_FAILURE = 2;  // 批量级校验失败
+  //    THROTTLED = 3;           // 整个批量被流控拒绝
+  //  }
+  //  BatchStatus batch_status = 3;
+
+  // 条目级结果（顺序与请求无关）
+  repeated SendResponse results = 4;
+  int64 total_cnt = 1;
+  int64 success_cnt = 2;
+
+  // 批量级错误（当batch_status≠FULL_SUCCESS时存在）
+  //  repeated SendResponse.ErrorInfo batch_errors = 5;
+
+  //  // 成本预汇总数据
+  //  message AggregatedCost {
+  //    string currency = 1;
+  //    double total_cost = 2;
+  //    int32 total_consumed = 3;  // 总消耗条数（含拆分）
+  //    map<string, int32> channel_counts = 4;  // 按渠道统计量
+  //  }
+  //  AggregatedCost cost_summary = 6;
+}
+
+message BatchItemResult {
+  string item_id = 1; // 对应请求中的item_id
+  oneof result {
+    SendResponse success_response = 2; // 成功时复用单条响应结构
+    SendResponse.ErrorInfo error = 3; // 失败时携带错误详情
+  }
+}
+
+// 异步批量请求
+message AsyncBatchSendRequest {
+  //  AuthHeader auth = 1;
+  //  repeated Notification items = 2 [(validate.rules).repeated = {max_items: 1000}]; // 扩展至1000条
+  repeated Notification items = 1; // 扩展至1000条
+
+  // 异步专属控制参数
+  //  message AsyncControl {
+  //    string callback_url = 1;    // 任务完成回调地址（HTTPS）
+  //    Priority task_priority = 2; // 任务队列优先级
+  //    string idempotency_key = 3; // 异步任务级幂等键
+  //  }
+  //  AsyncControl control = 3;
+}
+
+// 异步批量响应
+message AsyncBatchSendResponse {
+  repeated SendResponse results = 1;
+  //  string batch_task_id = 1;  // 异步任务唯一标识（ULID）
+  //  TaskStatus status = 2;      // 初始状态
+
+  //  enum TaskStatus {
+  //    ACCEPTED = 0;     // 已接受任务
+  //    VALIDATING = 1;   // 参数校验中
+  //    QUEUED = 2;       // 已进入处理队列
+  //  }
+
+  //  message CostPreview {
+  //    string currency = 1;
+  //    double estimated_cost = 2;  // 预计算成本（可能不精确）
+  //    int32 total_items = 3;      // 有效条目数
+  //  }
+  //  CostPreview preview = 3;      // 基于初步校验的成本预估
+}
+
+service AsyncCallbackService {
+  rpc Callback(CallbackRequest) returns (CallbackResponse);
+}
+
+// 回调请求体（通知平台 → 业务方）
+message CallbackRequest {
+  // 任务元数据
+  //  string task_id = 1;                  // 异步任务ID（ULID）
+  string key = 1;
+  SendResponse result = 2;
+  // 有业务方抱怨了你再提供
+  Notification originNotification = 3;
+  //  google.protobuf.Timestamp callback_time = 2; // 回调触发时间
+
+  // 任务执行结果
+  //  oneof task_result {
+  //    SingleTaskResult single_result = 3;  // 单任务结果
+  //    BatchTaskResult batch_result = 4;    // 批量任务结果
+  //  }
+
+  // 安全验证
+  //  string signature = 5;    // HMAC-SHA256(secret_key, task_id+timestamp)
+  //  string nonce = 6;         // 随机字符串（防重放攻击）
+}
+
+// 单任务回调数据
+message SingleTaskResult {
+  SendResponse send_response = 1; // 复用单条发送响应结构
+  string notification_id = 2; // 实际通知ID
+}
+
+// 批量任务回调数据
+message BatchTaskResult {
+  string batch_id = 1;
+  BatchSendResponse batch_response = 2; // 复用批量响应结构
+  string result_file_url = 3; // 完整结果文件下载地址
+}
+
+// 业务方响应格式（HTTP 200 OK时解析）
+message CallbackResponse {
+  bool success = 1;
+  //  enum AckStatus {
+  //    PROCESSED = 0;        // 成功处理
+  //    NEED_RETRY = 1;       // 要求平台重试
+  //    PERMANENT_FAIL = 2;   // 业务方确认失败（停止重试）
+  //  }
+  //  AckStatus ack_status = 1;
+  //  string error_message = 2;  // 当ack_status≠PROCESSED时需填写原因
+}

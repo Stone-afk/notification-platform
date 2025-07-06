@@ -5,6 +5,11 @@ import (
 	"notification-platform/internal/domain"
 )
 
+type QuotaDAO interface {
+	CreateOrUpdate(ctx context.Context, quota ...Quota) error
+	Find(ctx context.Context, bizID int64, channel string) (Quota, error)
+}
+
 type TxNotificationDAO interface {
 	// FindCheckBack 查找需要回查的事务通知，筛选条件是status为PREPARE，并且下一次回查时间小于当前时间
 	FindCheckBack(ctx context.Context, offset, limit int) ([]TxNotification, error)

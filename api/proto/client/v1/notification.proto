@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package client.v1;
+
+// 引入Notification定义
+import "notification/v1/notification.proto";
+
+option go_package = "notification-platform/api/gen/client/v1;clientv1";
+
+service CallbackService {
+  // 业务方需要实现的回调接口
+  rpc HandleNotificationResult(HandleNotificationResultRequest) returns (HandleNotificationResultResponse);
+}
+
+// 回调请求
+message HandleNotificationResultRequest {
+  // 通知平台生成的通知id
+  uint64 notification_id = 1;
+  // 原始请求
+  notification.v1.SendNotificationRequest original_request = 2;
+  // 发送结果
+  notification.v1.SendNotificationResponse result = 3;
+}
+
+// 回调响应
+message HandleNotificationResultResponse {
+  // 回调是否成功处理
+  bool success = 1;
+}

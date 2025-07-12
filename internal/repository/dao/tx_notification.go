@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/ego-component/egorm"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"notification-platform/internal/domain"
 	"strings"
 	"time"
@@ -18,6 +19,18 @@ var (
 
 type txNotificationDAO struct {
 	db *egorm.Component
+}
+
+func (dao *txNotificationDAO) Create(ctx context.Context, notification TxNotification) (int64, error) {
+	// Set create and update time if not already set
+	now := time.Now().UnixMilli()
+	notification.Ctime = now
+	notification.Utime = now
+	err := dao.db.WithContext(ctx).Create(&notification).Error
+	if errors.Is(err, gorm.ErrDuplicatedKey) {
+		return 0, ErrDuplicatedTx
+	}
+	return notification.TxID, err
 }
 
 func (dao *txNotificationDAO) FindCheckBack(ctx context.Context, offset, limit int) ([]TxNotification, error) {
@@ -63,33 +76,85 @@ func (dao *txNotificationDAO) UpdateCheckStatus(ctx context.Context, txNotificat
 }
 
 func (dao *txNotificationDAO) First(ctx context.Context, txID int64) (TxNotification, error) {
-	//TODO implement me
-	panic("implement me")
+	var notification TxNotification
+	err := dao.db.WithContext(ctx).Where("tx_id = ?", txID).First(&notification).Error
+	return notification, err
 }
 
 func (dao *txNotificationDAO) BatchGetTxNotification(ctx context.Context, txIDs []int64) (map[int64]TxNotification, error) {
-	//TODO implement me
-	panic("implement me")
+	var txns []TxNotification
+	err := dao.db.WithContext(ctx).Where("tx_id in (?)", txIDs).Find(&txns).Error
+	if err != nil {
+		return nil, err
+	}
+	result := make(map[int64]TxNotification, len(txns))
+	for id := range txns {
+		txn := txns[id]
+		result[txn.TxID] = txn
+	}
+	return result, nil
 }
 
 func (dao *txNotificationDAO) GetByBizIDKey(ctx context.Context, bizID int64, key string) (TxNotification, error) {
-	//TODO implement me
-	panic("implement me")
+	var tx TxNotification
+	err := dao.db.WithContext(ctx).
+		Model(&TxNotification{}).
+		Where("`biz_id` = ? AND `key` = ?", bizID, key).First(&tx).Error
+
+	return tx, err
 }
 
 func (dao *txNotificationDAO) UpdateNotificationID(ctx context.Context, bizID int64, key string, notificationID uint64) error {
-	//TODO implement me
-	panic("implement me")
+	err := dao.db.WithContext(ctx).
+		Model(&TxNotification{}).
+		Where("biz_id = ? AND `key` = ?", bizID, key).
+		Update("notification_id", notificationID).Error
+	return err
 }
 
-func (dao *txNotificationDAO) Prepare(ctx context.Context, txNotification TxNotification, notification Notification) (uint64, error) {
-	//TODO implement me
-	panic("implement me")
+func (dao *txNotificationDAO) Prepare(ctx context.Context, txn TxNotification, notification Notification) (uint64, error) {
+	var notificationID uint64
+	now := time.Now().UnixMilli()
+	txn.Ctime = now
+	txn.Utime = now
+	notification.Ctime = now
+	notification.Utime = now
+	err := dao.db.Transaction(func(tx *gorm.DB) error {
+		res := tx.WithContext(ctx).Clauses(clause.OnConflict{
+			DoNothing: true,
+		}).Create(&notification)
+		if res.Error != nil {
+			return res.Error
+		}
+		notificationID = notification.ID
+		if res.RowsAffected == 0 {
+			return nil
+		}
+		txn.NotificationID = notification.ID
+		return tx.WithContext(ctx).Clauses(clause.OnConflict{
+			DoNothing: true,
+		}).Create(&txn).Error
+	})
+	return notificationID, err
 }
 
 func (dao *txNotificationDAO) UpdateStatus(ctx context.Context, bizID int64, key string, status domain.TxNotificationStatus, notificationStatus domain.SendStatus) error {
-	//TODO implement me
-	panic("implement me")
+	return dao.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.WithContext(ctx).
+			Model(&TxNotification{}).
+			Where("biz_id = ? AND `key` = ? AND `status` = 'PREPARE'", bizID, key).
+			Update("status", status.String())
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return ErrUpdateStatusFailed
+		}
+		return tx.WithContext(ctx).
+			Model(&Notification{}).
+			Where("`biz_id` = ? AND `key` = ? ", bizID, key).
+			Update("status", notificationStatus).Error
+	})
 }
 
 // NewTxNotificationDAO creates a new instance of TxNotificationDAO

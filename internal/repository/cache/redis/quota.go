@@ -75,13 +75,45 @@ func (c *quotaCache) Decr(ctx context.Context, bizID int64, channel domain.Chann
 }
 
 func (c *quotaCache) MutiIncr(ctx context.Context, items []cache.IncrItem) error {
-	//TODO implement me
-	panic("implement me")
+	if len(items) == 0 {
+		return nil
+	}
+	keys, quotas := c.getKeysAndQuotas(items)
+	err := c.client.Eval(ctx, batchIncrQuotaScript, keys, quotas).Err()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *quotaCache) MutiDecr(ctx context.Context, items []cache.IncrItem) error {
-	//TODO implement me
-	panic("implement me")
+	keys, quotas := c.getKeysAndQuotas(items)
+	res, err := c.client.Eval(ctx, batchDecrQuotaScript, keys, quotas).Result()
+	if err != nil {
+		return err
+	}
+	resStr, ok := res.(string)
+	if !ok {
+		return errors.New("返回值不正确")
+	}
+	if resStr != "" {
+		return fmt.Errorf("%s不足 %w", resStr, ErrQuotaLessThenZero)
+	}
+	return nil
+}
+
+func (c *quotaCache) getKeysAndQuotas(items []cache.IncrItem) (keys []string, quotas []any) {
+	keys = make([]string, 0, len(items))
+	quotas = make([]any, 0, len(items))
+	for idx := range items {
+		item := items[idx]
+		keys = append(keys, c.key(domain.Quota{
+			BizID:   item.BizID,
+			Channel: item.Channel,
+		}))
+		quotas = append(quotas, item.Val)
+	}
+	return keys, quotas
 }
 
 func (c *quotaCache) key(quota domain.Quota) string {

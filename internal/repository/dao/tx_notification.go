@@ -3,8 +3,12 @@ package dao
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ego-component/egorm"
+	"gorm.io/gorm"
 	"notification-platform/internal/domain"
+	"strings"
+	"time"
 )
 
 var (
@@ -17,13 +21,45 @@ type txNotificationDAO struct {
 }
 
 func (dao *txNotificationDAO) FindCheckBack(ctx context.Context, offset, limit int) ([]TxNotification, error) {
-	//TODO implement me
-	panic("implement me")
+	var notifications []TxNotification
+	currentTime := time.Now().UnixMilli()
+
+	err := dao.db.WithContext(ctx).
+		Where("status = ? AND next_check_time <= ? AND next_check_time > 0", domain.TxNotificationStatusPrepare, currentTime).
+		Offset(offset).
+		Limit(limit).
+		Order("next_check_time").
+		Find(&notifications).Error
+
+	return notifications, err
 }
 
 func (dao *txNotificationDAO) UpdateCheckStatus(ctx context.Context, txNotifications []TxNotification, status domain.SendStatus) error {
-	//TODO implement me
-	panic("implement me")
+	sqls := make([]string, 0, len(txNotifications))
+	now := time.Now().UnixMilli()
+	notificationIDs := make([]uint64, 0, len(txNotifications))
+	for _, txNotification := range txNotifications {
+		updateSQL := fmt.Sprintf("UPDATE `tx_notifications` set `status` = '%s',`utime` = %d ,`next_check_time` = %d,`check_count` = %d WHERE `key` = %s AND `biz_id` = %d AND `status` = 'PREPARE'", txNotification.Status, now, txNotification.NextCheckTime, txNotification.CheckCount, txNotification.Key, txNotification.BizID)
+		sqls = append(sqls, updateSQL)
+		notificationIDs = append(notificationIDs, txNotification.NotificationID)
+	}
+	// 拼接所有SQL并执行
+	// UPDATE xxx; UPDATE xxx;UPDATE xxx;
+	if len(sqls) > 0 {
+		return dao.db.Transaction(func(tx *gorm.DB) error {
+			combinedSQL := strings.Join(sqls, "; ")
+			err := tx.WithContext(ctx).Exec(combinedSQL).Error
+			if err != nil {
+				return err
+			}
+			if status != domain.SendStatusPrepare {
+				return tx.WithContext(ctx).Model(&Notification{}).Where("id in ?", notificationIDs).
+					Update("status", status).Error
+			}
+			return nil
+		})
+	}
+	return nil
 }
 
 func (dao *txNotificationDAO) First(ctx context.Context, txID int64) (TxNotification, error) {

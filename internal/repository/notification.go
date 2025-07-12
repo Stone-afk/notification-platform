@@ -21,11 +21,29 @@ type notificationRepository struct {
 	logger     *elog.Component
 }
 
+// Create 创建单条通知记录，但不创建对应的回调记录
 func (repo *notificationRepository) Create(ctx context.Context, notification domain.Notification) (domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	// 扣减额度
+	err := repo.quotaCache.Decr(ctx, notification.BizID, notification.Channel, defaultQuotaNumber)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	ds, err := repo.dao.Create(ctx, repo.toEntity(notification))
+	if err != nil {
+		// 创建没成功把额度还回去
+		qerr := repo.quotaCache.Incr(ctx, notification.BizID, notification.Channel, defaultQuotaNumber)
+		if qerr != nil {
+			repo.logger.Error("额度归还失败", elog.FieldErr(err),
+				elog.Int64("biz_id", notification.BizID),
+				elog.String("channel", notification.Channel.String()),
+			)
+		}
+		return domain.Notification{}, err
+	}
+	return repo.toDomain(ds), nil
 }
 
+// CreateWithCallbackLog 创建单条通知记录，同时创建对应的回调记录
 func (repo *notificationRepository) CreateWithCallbackLog(ctx context.Context, notification domain.Notification) (domain.Notification, error) {
 	//TODO implement me
 	panic("implement me")

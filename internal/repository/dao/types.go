@@ -38,9 +38,9 @@ type NotificationDAO interface {
 	// CreateWithCallbackLog 创建单条通知记录，同时创建对应的回调记录
 	CreateWithCallbackLog(ctx context.Context, data Notification) (Notification, error)
 	// BatchCreate 批量创建通知记录，但不创建对应的回调记录
-	BatchCreate(ctx context.Context, dataList []Notification) ([]Notification, error)
+	BatchCreate(ctx context.Context, notifications []Notification) ([]Notification, error)
 	// BatchCreateWithCallbackLog 批量创建通知记录，同时创建对应的回调记录
-	BatchCreateWithCallbackLog(ctx context.Context, datas []Notification) ([]Notification, error)
+	BatchCreateWithCallbackLog(ctx context.Context, notifications []Notification) ([]Notification, error)
 
 	// GetByID 根据ID查询通知
 	GetByID(ctx context.Context, id uint64) (Notification, error)
@@ -63,8 +63,8 @@ type NotificationDAO interface {
 	BatchUpdateStatusSucceededOrFailed(ctx context.Context, successNotifications, failedNotifications []Notification) error
 
 	FindReadyNotifications(ctx context.Context, offset, limit int) ([]Notification, error)
-	MarkSuccess(ctx context.Context, entity Notification) error
-	MarkFailed(ctx context.Context, entity Notification) error
+	MarkSuccess(ctx context.Context, notification Notification) error
+	MarkFailed(ctx context.Context, notification Notification) error
 	MarkTimeoutSendingAsFailed(ctx context.Context, batchSize int) (int64, error)
 }
 

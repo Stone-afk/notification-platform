@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gotomicro/ego/core/elog"
 	"notification-platform/internal/domain"
 	"notification-platform/internal/repository/cache"
@@ -19,6 +20,36 @@ type notificationRepository struct {
 	dao        dao.NotificationDAO
 	quotaCache cache.QuotaCache
 	logger     *elog.Component
+}
+
+func (repo *notificationRepository) getItems(notifications []domain.Notification) []cache.IncrItem {
+	notiMap := make(map[string]cache.IncrItem)
+	for idx := range notifications {
+		d := notifications[idx]
+		key := fmt.Sprintf("%d-%s", d.BizID, d.Channel.String())
+		item, ok := notiMap[key]
+		if !ok {
+			item = cache.IncrItem{
+				BizID:   d.BizID,
+				Channel: d.Channel,
+			}
+		}
+		item.Val++
+		notiMap[key] = item
+	}
+	items := make([]cache.IncrItem, 0, len(notiMap))
+	for key := range notiMap {
+		items = append(items, notiMap[key])
+	}
+	return items
+}
+
+func (repo *notificationRepository) mutiDecr(ctx context.Context, notifications []domain.Notification) error {
+	return repo.quotaCache.MutiDecr(ctx, repo.getItems(notifications))
+}
+
+func (repo *notificationRepository) mutiIncr(ctx context.Context, notifications []domain.Notification) error {
+	return repo.quotaCache.MutiIncr(ctx, repo.getItems(notifications))
 }
 
 // Create 创建单条通知记录，但不创建对应的回调记录
@@ -45,8 +76,23 @@ func (repo *notificationRepository) Create(ctx context.Context, notification dom
 
 // CreateWithCallbackLog 创建单条通知记录，同时创建对应的回调记录
 func (repo *notificationRepository) CreateWithCallbackLog(ctx context.Context, notification domain.Notification) (domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	// 扣减额度
+	err := repo.quotaCache.Decr(ctx, notification.BizID, notification.Channel, defaultQuotaNumber)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	ds, err := repo.dao.CreateWithCallbackLog(ctx, repo.toEntity(notification))
+	if err != nil {
+		qerr := repo.quotaCache.Incr(ctx, notification.BizID, notification.Channel, defaultQuotaNumber)
+		if qerr != nil {
+			repo.logger.Error("额度归还失败", elog.FieldErr(err),
+				elog.Int64("biz_id", notification.BizID),
+				elog.String("channel", notification.Channel.String()),
+			)
+		}
+		return domain.Notification{}, err
+	}
+	return repo.toDomain(ds), nil
 }
 
 // BatchCreate 批量创建通知记录，但不创建对应的回调记录

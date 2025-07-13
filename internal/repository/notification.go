@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ecodeclub/ekit/slice"
 	"github.com/gotomicro/ego/core/elog"
 	"notification-platform/internal/domain"
 	"notification-platform/internal/repository/cache"
@@ -101,68 +102,147 @@ func (repo *notificationRepository) BatchCreate(ctx context.Context, notificatio
 }
 
 func (repo *notificationRepository) batchCreate(ctx context.Context, notifications []domain.Notification, createCallbackLog bool) ([]domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	if len(notifications) == 0 {
+		return nil, nil
+	}
+
+	daoNotifications := slice.Map(notifications, func(_ int, src domain.Notification) dao.Notification {
+		return repo.toEntity(src)
+	})
+
+	var createdNotifications []dao.Notification
+	var err error
+	// 扣减库存
+	err = repo.mutiDecr(ctx, notifications)
+	if err != nil {
+		return nil, err
+	}
+	if createCallbackLog {
+		createdNotifications, err = repo.dao.BatchCreateWithCallbackLog(ctx, daoNotifications)
+		if err != nil {
+			eerr := repo.mutiIncr(ctx, notifications)
+			if eerr != nil {
+				elog.Error("发送失败，归还额度失败", elog.FieldErr(eerr))
+			}
+			return nil, err
+		}
+	} else {
+		createdNotifications, err = repo.dao.BatchCreate(ctx, daoNotifications)
+		if err != nil {
+			eerr := repo.mutiIncr(ctx, notifications)
+			if eerr != nil {
+				elog.Error("发送失败，归还额度失败", elog.FieldErr(eerr))
+			}
+			return nil, err
+		}
+	}
+
+	return slice.Map(createdNotifications, func(_ int, src dao.Notification) domain.Notification {
+		return repo.toDomain(src)
+	}), nil
 }
 
+// BatchCreateWithCallbackLog 批量创建通知记录，同时创建对应的回调记录
 func (repo *notificationRepository) BatchCreateWithCallbackLog(ctx context.Context, notifications []domain.Notification) ([]domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	return repo.batchCreate(ctx, notifications, true)
 }
 
+// GetByID 根据ID获取通知
 func (repo *notificationRepository) GetByID(ctx context.Context, id uint64) (domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	n, err := repo.dao.GetByID(ctx, id)
+	if err != nil {
+		return domain.Notification{}, err
+	}
+	return repo.toDomain(n), nil
 }
 
 func (repo *notificationRepository) BatchGetByIDs(ctx context.Context, ids []uint64) (map[uint64]domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	notificationMap, err := repo.dao.BatchGetByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	domainNotificationMap := make(map[uint64]domain.Notification, len(notificationMap))
+	for id := range notificationMap {
+		notification := notificationMap[id]
+		domainNotificationMap[id] = repo.toDomain(notification)
+	}
+	return domainNotificationMap, nil
 }
 
 func (repo *notificationRepository) GetByKey(ctx context.Context, bizID int64, key string) (domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	not, err := repo.dao.GetByKey(ctx, bizID, key)
+	return repo.toDomain(not), err
 }
 
+// GetByKeys 根据业务ID和业务内唯一标识获取通知列表
 func (repo *notificationRepository) GetByKeys(ctx context.Context, bizID int64, keys ...string) ([]domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	notifications, err := repo.dao.GetByKeys(ctx, bizID, keys...)
+	if err != nil {
+		return nil, fmt.Errorf("查询通知列表失败: %w", err)
+	}
+	result := make([]domain.Notification, len(notifications))
+	for i := range notifications {
+		result[i] = repo.toDomain(notifications[i])
+	}
+	return result, nil
 }
 
+// CASStatus 更新通知状态
 func (repo *notificationRepository) CASStatus(ctx context.Context, notification domain.Notification) error {
-	//TODO implement me
-	panic("implement me")
+	return repo.dao.CASStatus(ctx, repo.toEntity(notification))
 }
 
 func (repo *notificationRepository) UpdateStatus(ctx context.Context, notification domain.Notification) error {
-	//TODO implement me
-	panic("implement me")
+	return repo.dao.UpdateStatus(ctx, repo.toEntity(notification))
 }
 
+// BatchUpdateStatusSucceededOrFailed 批量更新通知状态为成功或失败
 func (repo *notificationRepository) BatchUpdateStatusSucceededOrFailed(ctx context.Context, succeededNotifications, failedNotifications []domain.Notification) error {
-	//TODO implement me
-	panic("implement me")
+	// 转换成功的通知为DAO层的实体
+	successItems := slice.Map(succeededNotifications, func(_ int, src domain.Notification) dao.Notification {
+		return repo.toEntity(src)
+	})
+
+	// 转换失败的通知为DAO层的实体
+	failedItems := slice.Map(failedNotifications, func(_ int, src domain.Notification) dao.Notification {
+		return repo.toEntity(src)
+	})
+
+	err := repo.dao.BatchUpdateStatusSucceededOrFailed(ctx, successItems, failedItems)
+	if err != nil {
+		return err
+	}
+
+	items := repo.getItems(failedNotifications)
+	eerr := repo.quotaCache.MutiIncr(ctx, items)
+	if eerr != nil {
+		elog.Error("发送失败，归还额度失败", elog.FieldErr(eerr))
+	}
+	return nil
 }
 
 func (repo *notificationRepository) FindReadyNotifications(ctx context.Context, offset int, limit int) ([]domain.Notification, error) {
-	//TODO implement me
-	panic("implement me")
+	nos, err := repo.dao.FindReadyNotifications(ctx, offset, limit)
+	return slice.Map(nos, func(_ int, src dao.Notification) domain.Notification {
+		return repo.toDomain(src)
+	}), err
 }
 
-func (repo *notificationRepository) MarkSuccess(ctx context.Context, entity domain.Notification) error {
-	//TODO implement me
-	panic("implement me")
+func (repo *notificationRepository) MarkSuccess(ctx context.Context, notification domain.Notification) error {
+	return repo.dao.MarkSuccess(ctx, repo.toEntity(notification))
 }
 
 func (repo *notificationRepository) MarkFailed(ctx context.Context, notification domain.Notification) error {
-	//TODO implement me
-	panic("implement me")
+	err := repo.dao.MarkFailed(ctx, repo.toEntity(notification))
+	if err != nil {
+		return err
+	}
+	return repo.quotaCache.Incr(ctx, notification.BizID, notification.Channel, defaultQuotaNumber)
 }
 
 func (repo *notificationRepository) MarkTimeoutSendingAsFailed(ctx context.Context, batchSize int) (int64, error) {
-	//TODO implement me
-	panic("implement me")
+	// TODO 不用 MutiIncr 归还额度？？？
+	return repo.dao.MarkTimeoutSendingAsFailed(ctx, batchSize)
 }
 
 // toEntity 将领域对象转换为DAO实体

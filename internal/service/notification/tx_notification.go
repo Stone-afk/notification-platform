@@ -23,7 +23,7 @@ type txNotificationService struct {
 }
 
 func (s *txNotificationService) Prepare(ctx context.Context, notification domain.Notification) (uint64, error) {
-	// todo
+	// TODO
 	notification.Status = domain.SendStatusPrepare
 	notification.SetSendTime()
 	txn := domain.TxNotification{

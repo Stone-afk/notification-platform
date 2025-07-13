@@ -3,7 +3,6 @@ module notification-platform
 go 1.24.1
 
 require (
-	gitee.com/flycash/notification-platform v0.0.0-20250508102354-a61b0bdd49cc
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.6
 	github.com/alibabacloud-go/dysmsapi-20170525/v4 v4.1.3
 	github.com/alibabacloud-go/tea v1.3.7

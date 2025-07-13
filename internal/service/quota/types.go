@@ -5,6 +5,6 @@ import (
 	"notification-platform/internal/domain"
 )
 
-type Service interface {
+type QuotaService interface {
 	ResetQuota(ctx context.Context, biz domain.BusinessConfig) error
 }

@@ -156,19 +156,75 @@ func (repo *businessConfigRepository) diffIDs(ids []int64, m map[int64]domain.Bu
 	return res
 }
 
+// GetByID 根据ID获取业务配置
 func (repo *businessConfigRepository) GetByID(ctx context.Context, id int64) (domain.BusinessConfig, error) {
-	//TODO implement me
-	panic("implement me")
+	// 从数据库获取配置
+	cfg, localErr := repo.localCache.Get(ctx, id)
+	if localErr == nil {
+		return cfg, nil
+	}
+	cfg, redisErr := repo.redisCache.Get(ctx, id)
+	if redisErr == nil {
+		// 刷新本地缓存
+		lerr := repo.localCache.Set(ctx, cfg)
+		if lerr != nil {
+			repo.logger.Error("刷新本地缓存失败", elog.Any("err", lerr), elog.Int("bizId", int(id)))
+		}
+		return cfg, nil
+	}
+
+	c, err := repo.dao.GetByID(ctx, id)
+	if err != nil {
+		return domain.BusinessConfig{}, err
+	}
+	domainConfig := repo.toDomain(c)
+	// 刷新本地缓存+redis
+	lerr := repo.localCache.Set(ctx, domainConfig)
+	if lerr != nil {
+		repo.logger.Error("刷新本地缓存失败", elog.Any("err", lerr), elog.Int("bizId", int(id)))
+	}
+	rerr := repo.redisCache.Set(ctx, domainConfig)
+	if rerr != nil {
+		repo.logger.Error("刷新redis缓存失败", elog.Any("err", rerr), elog.Int("bizId", int(id)))
+	}
+	// 将DAO对象转换为领域对象
+	return domainConfig, nil
 }
 
+// Delete 删除业务配置
 func (repo *businessConfigRepository) Delete(ctx context.Context, id int64) error {
-	//TODO implement me
-	panic("implement me")
+	err := repo.dao.Delete(ctx, id)
+	if err != nil {
+		return err
+	}
+	err = repo.redisCache.Del(ctx, id)
+	if err != nil {
+		repo.logger.Error("删除redis缓存失败", elog.FieldErr(err), elog.Int64("bizId", id))
+	}
+	err = repo.localCache.Del(ctx, id)
+	if err != nil {
+		repo.logger.Error("删除本地缓存失败", elog.FieldErr(err), elog.Int64("bizId", id))
+	}
+	return nil
 }
 
 func (repo *businessConfigRepository) SaveConfig(ctx context.Context, config domain.BusinessConfig) error {
-	//TODO implement me
-	panic("implement me")
+	cfg, err := repo.dao.SaveConfig(ctx, repo.toEntity(config))
+	if err != nil {
+		return err
+	}
+	// 如果你要是监听配置中心，监听 MQ 之类的来同步本地缓存，
+	// 别忘了更新配置中心/ 发消息到 MQ 上
+	err = repo.redisCache.Set(ctx, repo.toDomain(cfg))
+	if err != nil {
+		repo.logger.Error("更新redis缓存失败", elog.FieldErr(err), elog.Int64("bizId", config.ID))
+	}
+
+	err = repo.localCache.Set(ctx, repo.toDomain(cfg))
+	if err != nil {
+		repo.logger.Error("更新本地缓存缓存失败", elog.FieldErr(err), elog.Int64("bizId", config.ID))
+	}
+	return nil
 }
 
 func (repo *businessConfigRepository) toDomain(config dao.BusinessConfig) domain.BusinessConfig {

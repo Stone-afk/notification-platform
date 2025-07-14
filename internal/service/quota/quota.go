@@ -28,6 +28,6 @@ func (s *service) ResetQuota(ctx context.Context, biz domain.BusinessConfig) err
 	return s.repo.CreateOrUpdate(ctx, sms, email)
 }
 
-func NewService(repo repository.QuotaRepository) QuotaService {
+func NewQuotaService(repo repository.QuotaRepository) QuotaService {
 	return &service{repo: repo}
 }

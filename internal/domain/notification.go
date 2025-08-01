@@ -3,7 +3,9 @@ package domain
 import (
 	"encoding/json"
 	"fmt"
+	notificationv1 "notification-platform/api/proto/gen/notification/v1"
 	"notification-platform/internal/errs"
+	"strconv"
 	"time"
 )
 
@@ -122,4 +124,91 @@ func (n *Notification) marshal(v any) (string, error) {
 		return "", err
 	}
 	return string(jsonBytes), nil
+}
+
+func NewNotificationFromAPI(n *notificationv1.Notification) (Notification, error) {
+	if n == nil {
+		return Notification{}, fmt.Errorf("%w: 通知信息不能为空", errs.ErrInvalidParameter)
+	}
+
+	tid, err := strconv.ParseInt(n.TemplateId, 10, 64)
+	if err != nil {
+		return Notification{}, fmt.Errorf("%w: 模板ID: %s", errs.ErrInvalidParameter, n.TemplateId)
+	}
+
+	channel, err := getDomainChannel(n)
+	if err != nil {
+		return Notification{}, err
+	}
+
+	return Notification{
+		Key:       n.Key,
+		Receivers: n.FindReceivers(),
+		Channel:   channel,
+		Template: Template{
+			ID:     tid,
+			Params: n.TemplateParams,
+		},
+		SendStrategyConfig: getDomainSendStrategyConfig(n),
+	}, nil
+}
+
+func getDomainChannel(n *notificationv1.Notification) (Channel, error) {
+	switch n.Channel {
+	case notificationv1.Channel_SMS:
+		return ChannelSMS, nil
+	case notificationv1.Channel_EMAIL:
+		return ChannelEmail, nil
+	case notificationv1.Channel_IN_APP:
+		return ChannelInApp, nil
+	default:
+		return "", fmt.Errorf("%w", errs.ErrUnknownChannel)
+	}
+}
+
+func getDomainSendStrategyConfig(n *notificationv1.Notification) SendStrategyConfig {
+	// 构建发送策略
+	sendStrategyType := SendStrategyImmediate // 默认为立即发送
+	var delaySeconds int64
+	var scheduledTime time.Time
+	var startTimeMilliseconds int64
+	var endTimeMilliseconds int64
+	var deadlineTime time.Time
+
+	// 处理发送策略
+	if n.Strategy != nil {
+		switch s := n.Strategy.StrategyType.(type) {
+		case *notificationv1.SendStrategy_Immediate:
+			sendStrategyType = SendStrategyImmediate
+		case *notificationv1.SendStrategy_Delayed:
+			if s.Delayed != nil && s.Delayed.DelaySeconds > 0 {
+				sendStrategyType = SendStrategyDelayed
+				delaySeconds = s.Delayed.DelaySeconds
+			}
+		case *notificationv1.SendStrategy_Scheduled:
+			if s.Scheduled != nil && s.Scheduled.SendTime != nil {
+				sendStrategyType = SendStrategyScheduled
+				scheduledTime = s.Scheduled.SendTime.AsTime()
+			}
+		case *notificationv1.SendStrategy_TimeWindow:
+			if s.TimeWindow != nil {
+				sendStrategyType = SendStrategyTimeWindow
+				startTimeMilliseconds = s.TimeWindow.StartTimeMilliseconds
+				endTimeMilliseconds = s.TimeWindow.EndTimeMilliseconds
+			}
+		case *notificationv1.SendStrategy_Deadline:
+			if s.Deadline != nil && s.Deadline.Deadline != nil {
+				sendStrategyType = SendStrategyDeadline
+				deadlineTime = s.Deadline.Deadline.AsTime()
+			}
+		}
+	}
+	return SendStrategyConfig{
+		Type:          sendStrategyType,
+		Delay:         time.Duration(delaySeconds) * time.Second,
+		ScheduledTime: scheduledTime,
+		StartTime:     time.Unix(startTimeMilliseconds, 0),
+		EndTime:       time.Unix(endTimeMilliseconds, 0),
+		DeadlineTime:  deadlineTime,
+	}
 }

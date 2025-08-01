@@ -44,6 +44,6 @@ func (b *Builder) Build() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewBuilder(svc idempotent.IdempotencyService) *Builder {
+func NewIdempotentBuilder(svc idempotent.IdempotencyService) *Builder {
 	return &Builder{svc: svc}
 }

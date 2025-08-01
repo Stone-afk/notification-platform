@@ -11,7 +11,7 @@ import (
 func TestJwtAuth_Encode(t *testing.T) {
 	// 创建 JwtAuth 实例
 	testKey := "test_key"
-	jwtAuth := NewJwtAuth(testKey)
+	jwtAuth := NewJwtAuthInterceptorBuilder(testKey)
 
 	// 测试场景
 	tests := []struct {
@@ -64,7 +64,7 @@ func TestJwtAuth_Encode(t *testing.T) {
 func TestJwtAuth_Decode(t *testing.T) {
 	// 创建 JwtAuth 实例
 	testKey := "test-secret-key"
-	jwtAuth := NewJwtAuth(testKey)
+	jwtAuth := NewJwtAuthInterceptorBuilder(testKey)
 
 	// 创建一个有效的令牌用于测试
 	validClaims := jwt.MapClaims{
@@ -136,7 +136,7 @@ func TestJwtAuth_Decode(t *testing.T) {
 
 func TestNewJwtAuth(t *testing.T) {
 	testKey := "test-secret-key"
-	jwtAuth := NewJwtAuth(testKey)
+	jwtAuth := NewJwtAuthInterceptorBuilder(testKey)
 
 	assert.NotNil(t, jwtAuth)
 	// 生成令牌测试实例是否正常工作

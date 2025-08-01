@@ -15,11 +15,11 @@ import (
 
 const BizIDName = "biz_id"
 
-type InterceptorBuilder struct {
+type JwtAuthInterceptorBuilder struct {
 	key string
 }
 
-func (b *InterceptorBuilder) Decode(tokenString string) (jwt.MapClaims, error) {
+func (b *JwtAuthInterceptorBuilder) Decode(tokenString string) (jwt.MapClaims, error) {
 	// 去除可能的 Bearer 前缀（兼容不同客户端实现）
 	tokenString = strings.TrimPrefix(tokenString, "Bearer ")
 
@@ -43,7 +43,7 @@ func (b *InterceptorBuilder) Decode(tokenString string) (jwt.MapClaims, error) {
 }
 
 // Encode 生成 JWT Token，支持自定义声明和自动添加标准声明
-func (b *InterceptorBuilder) Encode(customClaims jwt.MapClaims) (string, error) {
+func (b *JwtAuthInterceptorBuilder) Encode(customClaims jwt.MapClaims) (string, error) {
 	// 合并自定义声明和默认声明
 	claims := jwt.MapClaims{
 		"iat": time.Now().Unix(),
@@ -65,7 +65,7 @@ func (b *InterceptorBuilder) Encode(customClaims jwt.MapClaims) (string, error) 
 	return token.SignedString([]byte(b.key))
 }
 
-func (b *InterceptorBuilder) JwtAuthInterceptor() grpc.UnaryServerInterceptor {
+func (b *JwtAuthInterceptorBuilder) JwtAuthInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		// 1. 提取metadata
 		md, ok := metadata.FromIncomingContext(ctx)
@@ -105,8 +105,8 @@ func (b *InterceptorBuilder) JwtAuthInterceptor() grpc.UnaryServerInterceptor {
 	}
 }
 
-func NewJwtAuth(key string) *InterceptorBuilder {
-	return &InterceptorBuilder{
+func NewJwtAuthInterceptorBuilder(key string) *JwtAuthInterceptorBuilder {
+	return &JwtAuthInterceptorBuilder{
 		key: key,
 	}
 }

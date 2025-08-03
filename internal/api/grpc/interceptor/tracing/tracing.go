@@ -24,6 +24,7 @@ type Builder struct {
 // Build 返回一个gRPC拦截器，为每个一元RPC调用创建一个新的跟踪span
 // 生成的追踪数据将被发送到OTLP收集器，最终在Zipkin中可视化展示
 func (b *Builder) Build() grpc.UnaryServerInterceptor {
+	// tracer := otel.GetTracerProvider().Tracer(instrumentationName)
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
 		// 从gRPC方法名称中提取服务和方法名
 		fullMethod := info.FullMethod

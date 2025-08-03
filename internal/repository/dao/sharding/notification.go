@@ -22,6 +22,8 @@ import (
 	"time"
 )
 
+var _ dao.NotificationDAO = (*NotificationShardingDAO)(nil)
+
 type modifyIds struct {
 	callbackTab string
 	successIds  []uint64

@@ -13,6 +13,8 @@ import (
 	"time"
 )
 
+var _ dao.NotificationDAO = (*NotificationTask)(nil)
+
 type NotificationTask struct {
 	dbs *syncx.Map[string, *egorm.Component]
 }

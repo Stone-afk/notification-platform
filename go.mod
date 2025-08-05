@@ -8,6 +8,7 @@ require (
 	github.com/alibabacloud-go/dysmsapi-20170525/v4 v4.1.3
 	github.com/alibabacloud-go/tea v1.3.7
 	github.com/confluentinc/confluent-kafka-go/v2 v2.11.0
+	github.com/ecodeclub/ecache v0.0.0-20240111145855-75679834beca
 	github.com/ecodeclub/ekit v0.0.10
 	github.com/ecodeclub/ginx v0.0.2
 	github.com/ecodeclub/mq-api v0.0.0-20240508035004-fd7de3346cfe
@@ -17,6 +18,7 @@ require (
 	github.com/go-kratos/aegis v0.2.0
 	github.com/go-sql-driver/mysql v1.9.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/google/wire v0.6.0
 	github.com/gotomicro/ego v1.2.3
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/meoying/dlock-go v0.0.0-20250530125835-af969a8b419d
@@ -38,6 +40,7 @@ require (
 	golang.org/x/sync v0.13.0
 	google.golang.org/grpc v1.72.0
 	google.golang.org/protobuf v1.36.6
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.26.0
 )
 
@@ -137,7 +140,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	gorm.io/driver/clickhouse v0.3.2 // indirect
-	gorm.io/driver/mysql v1.5.7 // indirect
 	gorm.io/driver/postgres v1.3.5 // indirect
 	gorm.io/driver/sqlserver v1.5.1 // indirect
 	gorm.io/hints v1.1.2 // indirect

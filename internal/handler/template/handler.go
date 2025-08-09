@@ -192,3 +192,7 @@ func (h *Handler) toProviderVO(src domain.ChannelTemplateProvider) ChannelTempla
 		Utime:                    src.Utime,
 	}
 }
+
+func NewHandler(svc templatesvc.ChannelTemplateService) *Handler {
+	return &Handler{svc: svc}
+}

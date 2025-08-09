@@ -114,6 +114,30 @@ func (c *ConnPoolEventConsumer) processMessage(ctx context.Context, msg *mq.Mess
 	return nil
 }
 
+// Start 在后台协程中开始消费Kafka消息
+func (c *ConnPoolEventConsumer) Start(ctx context.Context) {
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				c.logger.Info("ConnPoolEventConsumer因上下文取消而停止")
+				return
+			default:
+				err := c.Consume(ctx)
+				if err != nil {
+					c.logger.Error("消费消息失败", elog.FieldErr(err))
+				}
+			}
+		}
+	}()
+	c.logger.Info("正在启动ConnPoolEventConsumer，监听主题", elog.String("topic", FailoverTopic))
+}
+
+// Stop 停止消费者
+func (c *ConnPoolEventConsumer) Stop() error {
+	return c.consumer.Close()
+}
+
 // NewConnPoolEventConsumer 创建一个新的连接池事件消费者
 func NewConnPoolEventConsumer(consumer *kafka.Consumer, db *gorm.DB, dbMonitor monitor.DBMonitor) *ConnPoolEventConsumer {
 	return &ConnPoolEventConsumer{
